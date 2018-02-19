@@ -2,14 +2,18 @@ import numpy as np
 import pandas as pd
 
 from collections import Counter
-from itertools import chain, combinations, izip, islice, tee
+from itertools import chain, combinations, islice, izip, tee
 from sklearn.datasets import fetch_20newsgroups
 
 
-def fetch_data(subset='all', clean=True):
+def fetch_data(subset='all'):
     remove = ('headers', 'footers', 'quotes') if clean else ()
     newsgroups_docs = fetch_20newsgroups(subset=subset, remove=remove)
-    return chain.from_iterable(doc.split() for doc in newsgroups_docs.data)
+    return chain.from_iterable(clean(doc.split()) for doc in newsgroups_docs.data[:10])
+
+
+def clean(word_iter):
+    return filter(lambda x: x != '', [word.strip('(){}[]!#.,?*') for word in word_iter])
 
 
 def unigram_counts(data):
@@ -60,9 +64,9 @@ if __name__ == '__main__':
     ngram_size = 5
 
     data = fetch_data()
-    data_iterators = tee(data, 2)
+    data_iter1, data_iter2 = tee(data, 2)
 
-    word_probabilities = normalize(unigram_counts(data_iterators[0]))
-    ngram_probabilities = normalize(ngram_counts(data_iterators[1], ngram_size))
+    word_probabilities = normalize(unigram_counts(data_iter1))
+    ngram_probabilities = normalize(ngram_counts(data_iter2, ngram_size))
 
     adj = pmi(ngram_probabilities, word_probabilities, symmetric=True)
