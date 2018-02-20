@@ -1,19 +1,28 @@
 import numpy as np
 import pandas as pd
+import re
 
 from collections import Counter
 from itertools import chain, combinations, islice, izip, tee
 from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction import stop_words as _stop_words
 
 
-def fetch_data(subset='all'):
+def fetch_data(stop_words, subset='all', clean=True):
     remove = ('headers', 'footers', 'quotes') if clean else ()
     newsgroups_docs = fetch_20newsgroups(subset=subset, remove=remove)
-    return chain.from_iterable(clean(doc.split()) for doc in newsgroups_docs.data[:10])
+    return chain.from_iterable(clean_words(doc.split(), stop_words)
+                               for doc in newsgroups_docs.data[:10])
 
 
-def clean(word_iter):
-    return filter(lambda x: x != '', [word.strip('(){}[]!#.,?*') for word in word_iter])
+def clean_words(word_iter, stop_words):
+    chars_to_strip = '(){}[]!#.,?*\"\''
+    regex = re.compile('^[a-z]+$')
+
+    words = [word.strip(chars_to_strip).replace('\'', '').lower() for word in word_iter]
+    words = filter(lambda x: x not in stop_words, words)
+    words = filter(regex.search, words)
+    return words
 
 
 def unigram_counts(data):
@@ -48,6 +57,7 @@ def pmi(ngram_probs, word_probs, symmetric=False):
         adj += adj.T
     word_prob_df = pd.Series(word_probs).to_frame().loc[vocab]
     adj /= np.dot(word_prob_df, word_prob_df.T)
+    adj = np.log(adj[adj > 0])
     return adj
 
 
@@ -62,8 +72,9 @@ def get_edges(adj, thresh=0):
 if __name__ == '__main__':
 
     ngram_size = 5
+    stop_words = _stop_words.ENGLISH_STOP_WORDS
 
-    data = fetch_data()
+    data = fetch_data(stop_words)
     data_iter1, data_iter2 = tee(data, 2)
 
     word_probabilities = normalize(unigram_counts(data_iter1))
