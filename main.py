@@ -44,13 +44,13 @@ def ngram_counts(data, n):
     return counter
 
 
-# TODO: more efficient implementation?
+# TODO: more efficient way to operate on all values of dict?
 def normalize(counter):
     total = float(sum(counter.itervalues()))
     return {k : v / total for k, v in counter.iteritems()}
 
 
-# brutal initial implementation - this should be a sparse matrix, etc
+# TODO: this is obviously brutal initial implementation - this should be a sparse matrix, use hashing trick?
 def pmi(ngram_probs, word_probs, symmetric=False):
     vocab = sorted(word_probs.keys())
     adj = pd.DataFrame(0, columns=vocab, index=vocab)
@@ -72,6 +72,7 @@ def embed(adj, dim):
     return pd.DataFrame(U[:, :dim], index=adj.index)
 
 
+# TODO: https://stackoverflow.com/questions/6910641/how-to-get-indices-of-n-maximum-values-in-a-numpy-array
 def search(embedding, vec):
     idx = np.argmax(np.dot(embedding, vec))
     return embedding.index[idx]
