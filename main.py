@@ -1,105 +1,137 @@
 """ Extremely initial implementation """
 
 import numpy as np
-import pandas as pd
-import re
 
 from collections import Counter
 from itertools import chain, combinations, islice, izip, tee
-from sklearn.datasets import fetch_20newsgroups
-from sklearn.feature_extraction import stop_words as _stop_words
+from scipy.sparse import dok_matrix
+from scipy.sparse.linalg import svds
+
+from data import fetch_newsgroups_data, get_tokenized_docs
 
 
-def fetch_data(stop_words, subset='all', clean=True):
-    remove = ('headers', 'footers', 'quotes') if clean else ()
-    newsgroups_docs = fetch_20newsgroups(subset=subset, remove=remove)
-    return chain.from_iterable(clean_words(doc.split(), stop_words)
-                               for doc in newsgroups_docs.data)
+
+class NormalizedCounter(Counter):
+
+    def normalize(self):
+        total = float(sum(self.itervalues()))
+        for key in self:
+            self[key] /= total
 
 
-def clean_words(word_iter, stop_words):
-    chars_to_strip = '(){}[]!#.,?*\"\''
-    regex = re.compile('^[a-z]+$')
+class WordEmbedding(object):
 
-    words = [word.strip(chars_to_strip).replace('\'', '').lower() for word in word_iter]
-    words = filter(lambda x: x not in stop_words, words)
-    words = filter(regex.search, words)
-    return words
+    def __init__(self, ngram_len):
+        self.ngram_len = ngram_len
+        # populated by fit
+        self.docs = None
+        self.vocab_ = None
+        self.inv_vocab_ = None
+        self.unigram_prob_ = None
+        self.ngram_prob_ = None
+        self.U_ = None
 
+    def fit(self, docs):
+        # TODO: tee vs list, cache
+        # https://stackoverflow.com/questions/21315207/deep-copying-a-generator-in-python/21315536#21315536
+        # https://stackoverflow.com/questions/19503455/caching-a-generator
+        self.docs = list(docs)
+        self.unigram_prob_ = self.compute_unigram_probability()
+        self.ngram_prob_ = self.compute_ngram_probability()
+        # TODO: hashing trick?
+        self.vocab_ = {word: i for i, word in enumerate(sorted(self.unigram_prob_.iterkeys()))}
+        self.inv_vocab_ = {v: k for k, v in self.vocab_.iteritems()}
+        return self
 
-def unigram_counts(data):
-    return Counter(data)
+    def compute_unigram_probability(self):
+        counts = self.count_unigrams()
+        counts.normalize()
+        return counts
 
+    def compute_ngram_probability(self):
+        counts = self.count_ngrams()
+        counts.normalize()
+        return counts
 
-# TODO: need to use adjustable size moving window?
-def ngram_generator(iterable, n):
-    return izip(*[islice(seq, i, None) for i, seq in enumerate(tee(iterable, n))])
+    def count_unigrams(self):
+        return NormalizedCounter(chain.from_iterable(self.docs))
 
+    def count_ngrams(self):
+        counter = NormalizedCounter()
+        for doc in self.docs:
+            for ngram in self.ngram_generator(doc, self.ngram_len):
+                pairs = combinations(np.unique(ngram), 2)
+                counter.update(pairs)
+        return counter
 
-def ngram_counts(data, n):
-    counter = Counter()
-    for ngram in ngram_generator(data, n):
-        pairs = combinations(np.unique(ngram), 2)
-        counter.update(pairs)
-    return counter
+    # TODO: need to use adjustable size moving window?
+    @staticmethod
+    def ngram_generator(iterable, ngram_len):
+        return izip(*[islice(seq, i, None) for i, seq in enumerate(tee(iterable, ngram_len))])
 
+    def to_matrix(self):
+        n = len(self.vocab_)
+        S = dok_matrix((n, n), dtype=np.float32)
+        for pair, prob in self.ngram_prob_.iteritems():
+            S[self.to_index(pair)] = prob
+        S = S + S.T
+        return S
 
-# TODO: more efficient way to operate on all values of dict?
-def normalize(counter):
-    total = float(sum(counter.itervalues()))
-    return {k : v / total for k, v in counter.iteritems()}
+    def to_array(self):
+        arr = np.empty((len(self.vocab_), 1))
+        for word, prob in self.unigram_prob_.iteritems():
+            arr[self.to_index(word)] = prob
+        return arr
 
+    def to_index(self, key):
+        if isinstance(key, tuple):
+            return self.vocab_[key[0]], self.vocab_[key[1]]
+        else:
+            return self.vocab_[key]
 
-# TODO: this is obviously brutal initial implementation - this should be a sparse matrix, use hashing trick?
-def pmi(ngram_probs, word_probs, symmetric=False):
-    vocab = sorted(word_probs.keys())
-    adj = pd.DataFrame(0, columns=vocab, index=vocab)
-    for pair, count in ngram_probs.iteritems():
-        adj.loc[pair] = count
-    if symmetric:
-        adj += adj.T
-    word_prob_df = pd.Series(word_probs).to_frame().loc[vocab]
-    adj /= np.dot(word_prob_df, word_prob_df.T)
-    adj = np.log(adj[adj > 0])
-    return adj
+    def pmi(self):
+        N = self.to_matrix()
+        U = self.to_array()
+        # TODO: make this sparse by masking U with indicator of N
+        U_U_inv = dok_matrix(1.0 / np.dot(U, U.T))
+        # TODO: should take a log here
+        return N.multiply(U_U_inv)
 
+    def embed(self, k):
+        pmi = self.pmi()
+        pmi.data = np.log(pmi.data)
+        U, _, _ = svds(pmi, k=k)
+        self.U_ = U
 
-def embed(adj, dim):
-    data = adj.fillna(0).values
-    if dim > min(data.shape):
-        raise ValueError('Must specify embedding dimension <= min(adj.shape)')
-    U, _, _ = np.linalg.svd(data, full_matrices=False)
-    return pd.DataFrame(U[:, :dim], index=adj.index)
-
-
-# TODO: https://stackoverflow.com/questions/6910641/how-to-get-indices-of-n-maximum-values-in-a-numpy-array
-def search(embedding, vec):
-    idx = np.argmax(np.dot(embedding, vec))
-    return embedding.index[idx]
-
-
-def get_edges(adj, thresh=0):
-    edges = []
-    for idx, row in adj.iterrows():
-        pairs = [(idx, col) for col in row[row > thresh].index]
-        edges.extend(pairs)
-    return edges
+    def search(self, search_key):
+        if isinstance(search_key, np.ndarray):
+            # TODO: check lengths
+            vec = search_key
+        elif isinstance(search_key, basestring):
+            try:
+                vec = self.U_[self.vocab_[search_key], :]
+            except KeyError:
+                raise ValueError('search_key must be in documents on which %s was fit' % self.__class__.__name__)
+        else:
+            raise TypeError('Input type must be string or ndarray')
+        # TODO: https://stackoverflow.com/questions/6910641/how-to-get-indices-of-n-maximum-values-in-a-numpy-array
+        # idx = np.argmax(np.dot(self.U_, vec))
+        # return self.inv_vocab_[idx]
+        idx = np.argsort(-np.dot(self.U_, vec))
+        return [self.inv_vocab_[i] for i in idx[:3]]
 
 
 if __name__ == '__main__':
 
-    ngram_size = 7
-    stop_words = _stop_words.ENGLISH_STOP_WORDS
+    ngram_size = 5  # probably too small
+    dim = 50
 
-    data = fetch_data(stop_words)
-    data_iter1, data_iter2 = tee(data, 2)
+    data = fetch_newsgroups_data()
+    docs = get_tokenized_docs(data[:100])
 
-    word_probabilities = normalize(unigram_counts(data_iter1))
-    ngram_probabilities = normalize(ngram_counts(data_iter2, ngram_size))
+    we = WordEmbedding(ngram_size)
+    we = we.fit(docs)
+    we.embed(dim)
 
-    adj = pmi(ngram_probabilities, word_probabilities, symmetric=True)
-
-    embedding = embed(adj, 25)
-
-    for word in embedding.index:
-        print '%s -- %s' % (word, search(embedding, embedding.loc[word]))
+    for word in we.vocab_.iterkeys():
+        print '%s -- %s' % (word, we.search(word))
