@@ -71,6 +71,7 @@ class Embedding(object):
 
         # get inverse outer product matrix of unigram probabilities
         # TODO: make this sparse by masking with indicator of P
+        # TODO: or use log(A/BC) = log(A) - log(B) - log(C) to avoid forming this dense matrix
         uni_arr = self.to_array(unigram_counts)  # get array of unigram counts
         uni_arr /= float(uni_arr.sum())  # normalize uni_arr to contain probabilities
         U = 1.0 / np.dot(uni_arr, uni_arr.T)
