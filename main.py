@@ -40,22 +40,23 @@ class WordEmbedding(object):
 
         return self
 
-    def search(self, search_key):
+    def search(self, search_key, k=3):
         if isinstance(search_key, np.ndarray):
-            # TODO: check lengths
+            if len(search_key) != self.U_.shape[1]:
+                raise ValueError('search_key vector must be of shape (1, %i)' % self.U_.shape[1])
             vec = search_key
         elif isinstance(search_key, basestring):
             try:
                 vec = self.U_[self.vocab_[search_key], :]
             except KeyError:
-                raise ValueError('search_key must be in documents on which %s was fit' % self.__class__.__name__)
+                raise ValueError('search_key must be in documents on which %s was fit'
+                                 % self.__class__.__name__)
         else:
-            raise TypeError('Input type must be string or ndarray')
-        # TODO: https://stackoverflow.com/questions/6910641/how-to-get-indices-of-n-maximum-values-in-a-numpy-array
-        # idx = np.argmax(np.dot(self.U_, vec))
-        # return self.inv_vocab_[idx]
-        idx = np.argsort(-np.dot(self.U_, vec))
-        return [self.inv_vocab_[i] for i in idx[:3]]
+            raise TypeError('input type must be string or ndarray')
+
+        dist = np.dot(self.U_, vec)
+        idx = np.argpartition(-dist, k)[:k]
+        return [self.inv_vocab_[i] for i in idx]
 
     @staticmethod
     def embed(P, dim):
