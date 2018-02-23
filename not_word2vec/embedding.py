@@ -9,6 +9,38 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import svds
 
 
+class WordCounter(object):
+
+    def __init__(self, ngram_len):
+        self.ngram_len = ngram_len
+
+    def count(self, docs):
+        if isinstance(docs, types.GeneratorType):
+            # use list instead of itertools.tee since we will
+            # consume the entire generator before using it again
+            docs = list(docs)
+        self.unigram_counts = self.count_unigrams(docs)
+        self.ngram_counts = self.count_ngrams(docs)
+
+    @staticmethod
+    def count_unigrams(docs):
+        return Counter(chain.from_iterable(docs))
+
+    # TODO: symmetric or not?
+    def count_ngrams(self, docs):
+        counter = Counter()
+        for doc in docs:
+            for ngram in self.ngram_generator(doc, self.ngram_len):
+                pairs = combinations(np.unique(ngram), 2)
+                counter.update(pairs)
+        return counter
+
+    # TODO: need to use adjustable size moving window?
+    @staticmethod
+    def ngram_generator(iterable, ngram_len):
+        return izip(*[islice(seq, i, None) for i, seq in enumerate(tee(iterable, ngram_len))])
+
+
 class Embedding(object):
 
     def __init__(self, ngram_len, dim):
@@ -81,6 +113,16 @@ class Embedding(object):
 
         return M_joint - M_indep
 
+    # TODO: if we want sort=False for PMI calculation, this serves little purpose and should be removed
+    def to_index(self, key, sort=False):
+        if isinstance(key, tuple):
+            i1, i2 = self.vocab_[key[0]], self.vocab_[key[1]]
+            if sort:
+                i1, i2 = sorted([i1, i2])
+            return i1, i2
+        else:
+            return self.vocab_[key]
+
     @staticmethod
     def count_unigrams(docs):
         return Counter(chain.from_iterable(docs))
@@ -98,12 +140,3 @@ class Embedding(object):
     @staticmethod
     def ngram_generator(iterable, ngram_len):
         return izip(*[islice(seq, i, None) for i, seq in enumerate(tee(iterable, ngram_len))])
-
-    def to_index(self, key, sort=False):
-        if isinstance(key, tuple):
-            i1, i2 = self.vocab_[key[0]], self.vocab_[key[1]]
-            if sort:
-                i1, i2 = sorted([i1, i2])
-            return i1, i2
-        else:
-            return self.vocab_[key]
