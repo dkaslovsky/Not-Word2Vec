@@ -62,24 +62,24 @@ class Embedding(object):
         return U
 
     def pmi_matrix(self, ngram_counts, unigram_counts):
-        # construct "adjacency" matrix of pairs from skipgrams
-        # TODO: check on definition as to whether this should be symmetric - we.to_index(sorted=True?)
-        data = ngram_counts.values()
+
+        # compute row, column indices for sparse matrix
+        # TODO: self.to_index(sorted=True) ?
         row_idx, col_idx = zip(*[self.to_index(key, sort=True) for key in ngram_counts.iterkeys()])
-        P = csr_matrix((data, (row_idx, col_idx)), shape=(self.vocab_len_, self.vocab_len_))
-        P = P.multiply(1.0 / P.sum())  # normalize P to contain probabilities
 
-        # get inverse outer product matrix of unigram probabilities
-        # TODO: make this sparse by masking with indicator of P
-        # TODO: or use log(A/BC) = log(A) - log(B) - log(C) to avoid forming this dense matrix
-        uni_arr = self.to_array(unigram_counts)  # get array of unigram counts
-        uni_arr /= float(uni_arr.sum())  # normalize uni_arr to contain probabilities
-        U = 1.0 / np.dot(uni_arr, uni_arr.T)
+        # construct "adjacency" matrix of (log) joint probability pairs from skipgrams
+        # TODO: check on definition as to whether this should be symmetric
+        # TODO: if symmetric, divide by 2?
+        joint_vals = np.array(ngram_counts.values())
+        joint_vals = np.log(joint_vals / float(sum(joint_vals)))
+        M_joint = csr_matrix((joint_vals, (row_idx, col_idx)), shape=(self.vocab_len_, self.vocab_len_))
 
-        # compute PMI matrix
-        P = P.multiply(csr_matrix(U))
-        P.data = np.log(P.data)
-        return P
+        # construct "adjacency" matrix of (log) product of corresponding (independent) probabilities
+        indep_vals = np.array([unigram_counts[i1] * unigram_counts[i2] for i1, i2 in ngram_counts.iterkeys()])
+        indep_vals = np.log(indep_vals / float(sum(unigram_counts.itervalues()) ** 2))
+        M_indep = csr_matrix((indep_vals, (row_idx, col_idx)), shape=(self.vocab_len_, self.vocab_len_))
+
+        return M_joint - M_indep
 
     @staticmethod
     def count_unigrams(docs):
@@ -107,10 +107,3 @@ class Embedding(object):
             return i1, i2
         else:
             return self.vocab_[key]
-
-    # TODO: improve implementation
-    def to_array(self, count_dict):
-        arr = np.empty((self.vocab_len_, 1))
-        for word, prob in count_dict.iteritems():
-            arr[self.to_index(word)] = prob
-        return arr
