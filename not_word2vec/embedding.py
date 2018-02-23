@@ -19,8 +19,7 @@ class WordCounter(object):
             # use list instead of itertools.tee since we will
             # consume the entire generator before using it again
             docs = list(docs)
-        self.unigram_counts = self.count_unigrams(docs)
-        self.ngram_counts = self.count_ngrams(docs)
+        return self.count_unigrams(docs), self.count_ngrams(docs)
 
     @staticmethod
     def count_unigrams(docs):
@@ -30,22 +29,22 @@ class WordCounter(object):
     def count_ngrams(self, docs):
         counter = Counter()
         for doc in docs:
-            for ngram in self.ngram_generator(doc, self.ngram_len):
+            for ngram in self.ngram_generator(doc):
                 pairs = combinations(np.unique(ngram), 2)
                 counter.update(pairs)
         return counter
 
     # TODO: need to use adjustable size moving window?
-    @staticmethod
-    def ngram_generator(iterable, ngram_len):
-        return izip(*[islice(seq, i, None) for i, seq in enumerate(tee(iterable, ngram_len))])
+    def ngram_generator(self, iterable):
+        return izip(*[islice(seq, i, None) for i, seq in enumerate(tee(iterable, self.ngram_len))])
 
 
-class Embedding(object):
+class Embedding(WordCounter):
 
     def __init__(self, ngram_len, dim):
-        self.ngram_len = ngram_len
+        super(Embedding, self).__init__(ngram_len)
         self.dim = dim
+
         # populated by fit
         self.vocab_ = None
         self.inv_vocab_ = None
@@ -53,13 +52,8 @@ class Embedding(object):
         self.U_ = None
 
     def fit(self, docs):
-        if isinstance(docs, types.GeneratorType):
-            # use list instead of itertools.tee since we will
-            # consume the entire generator before using it again
-            docs = list(docs)
 
-        unigram_counts = self.count_unigrams(docs)
-        ngram_counts = self.count_ngrams(docs)
+        unigram_counts, ngram_counts = self.count(docs)
 
         self.vocab_ = {word: i for i, word in enumerate(sorted(unigram_counts.iterkeys()))}
         self.inv_vocab_ = {v: k for k, v in self.vocab_.iteritems()}
@@ -87,11 +81,6 @@ class Embedding(object):
         dist = np.dot(self.U_, vec)
         idx = np.argpartition(-dist, k)[:k]
         return [self.inv_vocab_[i] for i in idx]
-
-    @staticmethod
-    def embed(P, dim):
-        U, _, _ = svds(P, k=dim)
-        return U
 
     def pmi_matrix(self, ngram_counts, unigram_counts):
 
@@ -124,19 +113,6 @@ class Embedding(object):
             return self.vocab_[key]
 
     @staticmethod
-    def count_unigrams(docs):
-        return Counter(chain.from_iterable(docs))
-
-    # TODO: symmetric or not?
-    def count_ngrams(self, docs):
-        counter = Counter()
-        for doc in docs:
-            for ngram in self.ngram_generator(doc, self.ngram_len):
-                pairs = combinations(np.unique(ngram), 2)
-                counter.update(pairs)
-        return counter
-
-    # TODO: need to use adjustable size moving window?
-    @staticmethod
-    def ngram_generator(iterable, ngram_len):
-        return izip(*[islice(seq, i, None) for i, seq in enumerate(tee(iterable, ngram_len))])
+    def embed(P, dim):
+        U, _, _ = svds(P, k=dim)
+        return U
