@@ -1,8 +1,8 @@
-import numpy as np
 import types
-
 from collections import Counter
 from itertools import chain, combinations, islice, izip, tee
+
+import numpy as np
 
 
 class WordCounter(object):
