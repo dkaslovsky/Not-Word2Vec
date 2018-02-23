@@ -45,6 +45,6 @@ class TestWordCounter(unittest.TestCase):
         ngrams = self.wc.ngram_generator(doc)
         self.assertEqual(ngrams.next(), ('the', 'quick', 'brown'))
         self.assertEqual(ngrams.next(), ('quick', 'brown', 'fox'))
-        self.assertEqual(ngrams.next(),('brown', 'fox', 'jumps'))
+        self.assertEqual(ngrams.next(), ('brown', 'fox', 'jumps'))
         with self.assertRaises(StopIteration):
             ngrams.next()
