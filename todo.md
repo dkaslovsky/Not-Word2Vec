@@ -1,6 +1,7 @@
+- update tests for skipgram
+- resolve symmetry
 - docstrings
 - unit tests
-- skipgram model, resolve symmetry
 - example notebook (scatter plot?)
 - word math / analogies?
-- multiple data sets
+- multiple data sets, different tokenizer functionality for each one needed?
