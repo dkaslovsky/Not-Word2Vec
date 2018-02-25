@@ -8,13 +8,13 @@ if __name__ == '__main__':
 
     n_docs = 100
 
-    ngram_size = 5  # probably too small
-    dim = 50
+    skipgram_window_size = 2  # corresponds to skipgram len = 5; probably too small
+    embedding_dimension = 50
 
     data = fetch_newsgroups_data()
     docs = Tokenizer().tokenize(data[:n_docs])
 
-    e = Embedding(ngram_size, dim)
+    e = Embedding(skipgram_window_size, embedding_dimension)
 
     t_start = time.time()
     e = e.fit(docs)

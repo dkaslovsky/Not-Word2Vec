@@ -7,8 +7,8 @@ from not_word2vec.count import WordCounter
 
 class Embedding(WordCounter):
 
-    def __init__(self, ngram_len, dim):
-        super(Embedding, self).__init__(ngram_len)
+    def __init__(self, window_len, dim):
+        super(Embedding, self).__init__(window_len)
         self.dim = dim
 
         # populated by fit
@@ -19,13 +19,13 @@ class Embedding(WordCounter):
 
     def fit(self, docs):
 
-        unigram_counts, ngram_counts = self.count(docs)
+        unigram_counts, skipgram_counts = self.count(docs)
 
         self.vocab_ = {word: i for i, word in enumerate(sorted(unigram_counts.iterkeys()))}
         self.inv_vocab_ = {v: k for k, v in self.vocab_.iteritems()}
         self.vocab_len_ = len(self.vocab_)
 
-        P = self.pmi_matrix(ngram_counts, unigram_counts)
+        P = self.pmi_matrix(skipgram_counts, unigram_counts)
         self.U_ = self.embed(P, self.dim)
 
         return self
@@ -48,21 +48,21 @@ class Embedding(WordCounter):
         idx = np.argpartition(-dist, k)[:k]
         return [self.inv_vocab_[i] for i in idx]
 
-    def pmi_matrix(self, ngram_counts, unigram_counts):
+    def pmi_matrix(self, skipgram_counts, unigram_counts):
 
         # compute row, column indices for sparse matrix
         # TODO: self.to_index(sorted=True) ?
-        row_idx, col_idx = zip(*[self.to_index(key, sort=True) for key in ngram_counts.iterkeys()])
+        row_idx, col_idx = zip(*[self.to_index(key, sort=True) for key in skipgram_counts.iterkeys()])
 
         # construct "adjacency" matrix of (log) joint probability pairs from skipgrams
         # TODO: check on definition as to whether this should be symmetric
         # TODO: if symmetric, divide by 2?
-        joint_vals = np.array(ngram_counts.values())
+        joint_vals = np.array(skipgram_counts.values())
         joint_vals = np.log(joint_vals / float(sum(joint_vals)))
         M_joint = csr_matrix((joint_vals, (row_idx, col_idx)), shape=(self.vocab_len_, self.vocab_len_))
 
         # construct "adjacency" matrix of (log) product of corresponding (independent) probabilities
-        indep_vals = np.array([unigram_counts[i1] * unigram_counts[i2] for i1, i2 in ngram_counts.iterkeys()])
+        indep_vals = np.array([unigram_counts[i1] * unigram_counts[i2] for i1, i2 in skipgram_counts.iterkeys()])
         indep_vals = np.log(indep_vals / float(sum(unigram_counts.itervalues()) ** 2))
         M_indep = csr_matrix((indep_vals, (row_idx, col_idx)), shape=(self.vocab_len_, self.vocab_len_))
 
