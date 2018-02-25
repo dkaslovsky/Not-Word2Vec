@@ -1,7 +1,7 @@
 import time
 
-from data import fetch_newsgroups_data, get_tokenized_docs
-from not_word2vec import Embedding
+from data import fetch_newsgroups_data
+from not_word2vec import Embedding, Tokenizer
 
 
 if __name__ == '__main__':
@@ -12,7 +12,7 @@ if __name__ == '__main__':
     dim = 50
 
     data = fetch_newsgroups_data()
-    docs = get_tokenized_docs(data[:n_docs])
+    docs = Tokenizer().tokenize(data[:n_docs])
 
     e = Embedding(ngram_size, dim)
 

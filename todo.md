@@ -3,3 +3,4 @@
 - skipgram model, resolve symmetry
 - example notebook (scatter plot?)
 - word math / analogies?
+- multiple data sets
