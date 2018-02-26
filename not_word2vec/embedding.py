@@ -5,10 +5,10 @@ from scipy.sparse.linalg import svds
 from not_word2vec.count import WordCounter
 
 
-class Embedding(WordCounter):
+class Embedding(object):
 
     def __init__(self, window_len, dim):
-        super(Embedding, self).__init__(window_len)
+        self.word_counter = WordCounter(window_len)
         self.dim = dim
 
         # populated by fit
@@ -19,7 +19,7 @@ class Embedding(WordCounter):
 
     def fit(self, docs):
 
-        unigram_counts, skipgram_counts = self.count(docs)
+        unigram_counts, skipgram_counts = self.word_counter.count(docs)
 
         self.vocab_ = {word: i for i, word in enumerate(sorted(unigram_counts.iterkeys()))}
         self.inv_vocab_ = {v: k for k, v in self.vocab_.iteritems()}
@@ -33,7 +33,8 @@ class Embedding(WordCounter):
     def search(self, search_key, k=3):
         if isinstance(search_key, np.ndarray):
             if len(search_key) != self.U_.shape[1]:
-                raise ValueError('search_key vector must be of shape (1, %i)' % self.U_.shape[1])
+                raise ValueError('search_key vector must be of shape (1, %i)'
+                                 % self.U_.shape[1])
             vec = search_key
         elif isinstance(search_key, basestring):
             try:
@@ -51,32 +52,25 @@ class Embedding(WordCounter):
     def pmi_matrix(self, skipgram_counts, unigram_counts):
 
         # compute row, column indices for sparse matrix
-        # TODO: self.to_index(sorted=True) ?
-        row_idx, col_idx = zip(*[self.to_index(key, sort=True) for key in skipgram_counts.iterkeys()])
+        row_idx, col_idx = zip(*[(self.vocab_[key[0]], self.vocab_[key[1]])
+                                 for key in skipgram_counts.iterkeys()])
 
-        # construct "adjacency" matrix of (log) joint probability pairs from skipgrams
-        # TODO: check on definition as to whether this should be symmetric
-        # TODO: if symmetric, divide by 2?
+        # construct "adjacency" matrix of (log) joint probability
+        #  pairs from skipgrams
         joint_vals = np.array(skipgram_counts.values())
         joint_vals = np.log(joint_vals / float(sum(joint_vals)))
-        M_joint = csr_matrix((joint_vals, (row_idx, col_idx)), shape=(self.vocab_len_, self.vocab_len_))
+        M_joint = csr_matrix((joint_vals, (row_idx, col_idx)),
+                             shape=(self.vocab_len_, self.vocab_len_))
 
-        # construct "adjacency" matrix of (log) product of corresponding (independent) probabilities
-        indep_vals = np.array([unigram_counts[i1] * unigram_counts[i2] for i1, i2 in skipgram_counts.iterkeys()])
+        # construct "adjacency" matrix of (log) product
+        # of corresponding (independent) probabilities
+        indep_vals = np.array([unigram_counts[i1] * unigram_counts[i2]
+                               for i1, i2 in skipgram_counts.iterkeys()])
         indep_vals = np.log(indep_vals / float(sum(unigram_counts.itervalues()) ** 2))
-        M_indep = csr_matrix((indep_vals, (row_idx, col_idx)), shape=(self.vocab_len_, self.vocab_len_))
+        M_indep = csr_matrix((indep_vals, (row_idx, col_idx)),
+                             shape=(self.vocab_len_, self.vocab_len_))
 
         return M_joint - M_indep
-
-    # TODO: if we want sort=False for PMI calculation, this serves little purpose and should be removed
-    def to_index(self, key, sort=False):
-        if isinstance(key, tuple):
-            i1, i2 = self.vocab_[key[0]], self.vocab_[key[1]]
-            if sort:
-                i1, i2 = sorted([i1, i2])
-            return i1, i2
-        else:
-            return self.vocab_[key]
 
     @staticmethod
     def embed(P, dim):

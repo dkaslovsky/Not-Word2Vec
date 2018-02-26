@@ -33,7 +33,7 @@ class WordCounter(object):
     def skipgram_to_pairs(self, skipgram):
         target_word = skipgram[self.window_len]
         context_words = it.chain(it.islice(skipgram, 0, self.window_len),
-                              it.islice(skipgram, self.window_len + 1, None))
+                                 it.islice(skipgram, self.window_len + 1, None))
         return [(target_word, context_word) for context_word in context_words if context_word is not None]
 
     def skipgram_generator(self, iterable):

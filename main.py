@@ -6,9 +6,9 @@ from not_word2vec import Embedding, Tokenizer
 
 if __name__ == '__main__':
 
-    n_docs = 100
+    n_docs = 1000
 
-    skipgram_window_size = 2  # corresponds to skipgram len = 5; probably too small
+    skipgram_window_size = 4
     embedding_dimension = 50
 
     data = fetch_newsgroups_data()
