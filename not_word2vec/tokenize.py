@@ -17,8 +17,7 @@ class Tokenizer(object):
     def tokenize(self, docs):
         """
 
-        :param docs: iterable of documents (strings)
-        :return:
+        :param docs: iterable of string documents
         """
         return (self._process_doc(doc.split()) for doc in docs)
 
