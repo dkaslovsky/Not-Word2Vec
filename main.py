@@ -26,4 +26,5 @@ if __name__ == '__main__':
     print 'Words similar to \'%s\' %s: ' % (search_key, e.search(search_key, k=10))
 
     word1, word2 = ('sportscenter', 'news')
-    print '%s - %s = %s' % (word1, word2, e.subtract(word1, word2))
+    word_diff = e.subtract(word1, word2)
+    print '%s - %s = %s' % (word1, word2, word_diff)

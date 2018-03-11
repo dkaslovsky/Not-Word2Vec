@@ -28,12 +28,11 @@ class Embedding(object):
         """
         # get counts
         unigram_counts, skipgram_counts = self.word_counter.count(docs)
-        # mapping and inverse mapping of word : row
-        self.vocab_ = {word: i for i, word in enumerate(sorted(unigram_counts.iterkeys()))}
-        self.inv_vocab_ = {v: k for k, v in self.vocab_.iteritems()}
-        self.vocab_len_ = len(self.vocab_)
-        # construct embedding
+        # set vocabulary
+        self._set_vocab(unigram_counts)
+        # construct PMI matrix
         P = self._pmi_matrix(skipgram_counts, unigram_counts)
+        # construct embedding
         self.U_ = self._embed(P, self.dim)
         return self
 
@@ -96,6 +95,16 @@ class Embedding(object):
             return vec
         return self.search(vec, k=k)
 
+    def _set_vocab(self, unigram_counts):
+        """
+        Construct mapping and inverse mapping of word : row index
+        :param unigram_counts: dict mapping word i : observed count
+        """
+        self.vocab_ = {word: i for i, word in enumerate(sorted(unigram_counts.iterkeys()))}
+        self.inv_vocab_ = {v: k for k, v in self.vocab_.iteritems()}
+        self.vocab_len_ = len(self.vocab_)
+        return
+
     def _pmi_matrix(self, skipgram_counts, unigram_counts):
         """
         Construct sparse PMI matrix where entry i, j = log(p(i,j)/p(i)p(j)), with
@@ -118,8 +127,8 @@ class Embedding(object):
 
         # construct "adjacency" matrix of (log) product
         # of corresponding (independent) probabilities
-        indep_vals = np.array([unigram_counts[i1] * unigram_counts[i2]
-                               for i1, i2 in skipgram_counts.iterkeys()])
+        indep_vals = np.array([unigram_counts[key1] * unigram_counts[key2]
+                               for key1, key2 in skipgram_counts.iterkeys()])
         indep_vals = np.log(indep_vals / float(sum(unigram_counts.itervalues()) ** 2))
         M_indep = csr_matrix((indep_vals, (row_idx, col_idx)),
                              shape=(self.vocab_len_, self.vocab_len_))
