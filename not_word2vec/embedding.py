@@ -21,7 +21,7 @@ class Embedding(object):
         self.vocab_len_ = None
         self.U_ = None
 
-    def fit(self, docs):
+    def embed(self, docs):
         """
         Construct embedding for words contained in documents
         :param docs: generator or iterable of lists of strings

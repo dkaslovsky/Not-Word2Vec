@@ -17,7 +17,7 @@ if __name__ == '__main__':
     e = Embedding(skipgram_window_size, embedding_dimension)
 
     t_start = time.time()
-    e = e.fit(docs)
+    e = e.embed(docs)
     t_end = time.time()
     print 'Computed %i dimensional embedding of vocabulary of size %i in %i second(s)' \
           % (embedding_dimension, e.vocab_len_, (t_end - t_start))
