@@ -55,3 +55,18 @@ class TestWordCounter(unittest.TestCase):
         expected_pair_counts = {k: 2 * v for k, v in self.expected_pair_counts.iteritems()}
         self.assertEqual(unigram_counts, expected_unigram_counts)
         self.assertEqual(skipgram_counts, expected_pair_counts)
+
+    def test_check_input(self):
+        ll = [['a', 'b'], ['c', 'd']]
+        # test list of lists
+        self.assertListEqual(self.wc._check_input(ll), ll)
+        # test list of single list
+        self.assertListEqual(self.wc._check_input([ll[0]]), [ll[0]])
+        # test generator
+        self.assertListEqual(self.wc._check_input((x for x in [['a', 'b'], ['c', 'd']])), ll)
+        # test list raises error
+        with self.assertRaises(TypeError):
+            self.wc._check_input([1, 2, 3])
+        # test string raises error
+        with self.assertRaises(TypeError):
+            self.wc._check_input('a b c')

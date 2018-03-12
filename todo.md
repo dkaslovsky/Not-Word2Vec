@@ -1,3 +1,2 @@
-- protect against single doc (list vs list of lists) and test for it
 - tokenize/clean -> data.sklearn_newsgroups, data.clean
 - example notebook or script
