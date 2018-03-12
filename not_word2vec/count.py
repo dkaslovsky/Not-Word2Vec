@@ -19,10 +19,7 @@ class WordCounter(object):
         :param docs: iterable of lists where each list contains strings
           in order of appearance in a document
         """
-        if isinstance(docs, types.GeneratorType):
-            # use list instead of itertools.tee since we will
-            # consume the entire generator before using it again
-            docs = list(docs)
+        docs = self._check_input(docs)
         return self.count_unigrams(docs), self.count_skipgram_pairs(docs)
 
     @staticmethod
@@ -71,5 +68,20 @@ class WordCounter(object):
         :param doc: list of strings
         """
         return it.chain(it.repeat(None, self.window_len),
-                     doc,
-                     it.repeat(None, self.window_len))
+                        doc,
+                        it.repeat(None, self.window_len))
+
+    @staticmethod
+    def _check_input(obj):
+        """
+        Checks if input is list of lists or generator of lists and raises TypeError if not
+        :param obj: input object
+        """
+        if isinstance(obj, types.GeneratorType):
+            # use list instead of itertools.tee since we will
+            # consume the entire generator before using it again
+            obj = list(obj)
+        if isinstance(obj, list):
+            if all(isinstance(elem, list) for elem in obj):
+                return obj
+        raise TypeError('Input must be list of lists or generator of lists')
