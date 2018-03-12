@@ -1,19 +1,16 @@
 import time
 
-from data import fetch_newsgroups_data
-from not_word2vec import Embedding, Tokenizer
+from data.sklearn_newsgroups import fetch_newsgroups_data
+from not_word2vec import Embedding
 
 
 if __name__ == '__main__':
 
     n_docs = 1000
+    docs = fetch_newsgroups_data(n_docs=n_docs, clean=True)
 
     skipgram_window_size = 4
     embedding_dimension = 200
-
-    data = fetch_newsgroups_data()
-    docs = Tokenizer().tokenize(data[:n_docs])
-
     e = Embedding(skipgram_window_size, embedding_dimension)
 
     t_start = time.time()
