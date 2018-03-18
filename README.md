@@ -9,3 +9,5 @@ To run unit tests:
 ```
 $ python -m unittest discover -v tests
 ```
+
+See [example.ipynb](example.ipynb) for example embedding, word search, and analogies via word addition and word subtraction.
