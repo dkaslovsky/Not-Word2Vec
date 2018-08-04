@@ -10,7 +10,7 @@ install:
   - pip install coveralls
 
 script:
-   py.test --cov=not-word2vec/
+   py.test --cov=not_word2vec/
 
 after_success:
   - coveralls
