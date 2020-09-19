@@ -1,7 +1,7 @@
 # Not-Word2Vec
 This is not word2vec.
 
-[![Build Status](https://travis-ci.org/dkaslovsky/Not-Word2Vec.svg?branch=master)](https://travis-ci.org/dkaslovsky/Not-Word2Vec)
+[![Build Status](https://travis-ci.com/dkaslovsky/Not-Word2Vec.svg?branch=master)](https://travis-ci.org/dkaslovsky/Not-Word2Vec)
 [![Coverage Status](https://coveralls.io/repos/github/dkaslovsky/Not-Word2Vec/badge.svg?branch=master)](https://coveralls.io/github/dkaslovsky/Not-Word2Vec?branch=master)
 
 
