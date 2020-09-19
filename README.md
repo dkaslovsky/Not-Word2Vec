@@ -1,8 +1,9 @@
 # Not-Word2Vec
 This is not word2vec.
 
-[![Build Status](https://travis-ci.com/dkaslovsky/Not-Word2Vec.svg?branch=master)](https://travis-ci.org/dkaslovsky/Not-Word2Vec)
+[![Build Status](https://travis-ci.com/dkaslovsky/Not-Word2Vec.svg?branch=master)](https://travis-ci.com/dkaslovsky/Not-Word2Vec)
 [![Coverage Status](https://coveralls.io/repos/github/dkaslovsky/Not-Word2Vec/badge.svg?branch=master)](https://coveralls.io/github/dkaslovsky/Not-Word2Vec?branch=master)
+[![Python 2.7](https://img.shields.io/badge/python-2.7-blue.svg)](https://www.python.org/downloads/release/python-270/)
 
 
 Pointwise Mutual Information (PMI) implementation of word embedding algorithm as described by https://multithreaded.stitchfix.com/blog/2017/10/18/stop-using-word2vec/
